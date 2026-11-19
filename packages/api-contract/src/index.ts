@@ -2121,6 +2121,7 @@ export const TriggerFilterValueSchema = z.union([z.string(), TriggerFilterCondit
 export type TriggerFilterValue = z.infer<typeof TriggerFilterValueSchema>;
 
 export const TriggerSchema = z.object({
+  session_readers: z.object({ humans: z.enum(['none', 'members']), agents: z.array(z.string()) }).optional(),
   slug: z.string(),
   path: z.string(),
   name: z.string(),
