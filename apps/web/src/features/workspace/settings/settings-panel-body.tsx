@@ -168,14 +168,17 @@ export function SettingsPanelBody({ projectId }: { projectId?: string }) {
   // account-scoped tabs — see `ACCOUNT_SCOPED_SETTINGS_TABS` above.
   const resolvedAccountId = useSettingsAccountId(project?.account_id);
 
-  // Kortix in Chrome exists only where the platform switch is on (local, dev
-  // until launch): the browser list answers 404 elsewhere.
+  // Kortix in Chrome exists only where the API serves it (KORTIX_CHROME_ENABLED):
+  // a self-hosted server answers the browser list with 404.
   const chromeOffered = useChromeOffered(open);
   const isTabAllowed = useCallback(
     (t: SettingsTab) =>
-      isSettingsTabAllowed(t, { hasProject: !!projectId }) && (t !== 'chrome' || chromeOffered),
+      isSettingsTabAllowed(t, { hasProject: !!projectId }) && (t !== 'chrome' || chromeOffered === true),
     [projectId, chromeOffered],
   );
+  // `/settings/chrome` (the link the API and the CLI print) keeps its tab
+  // until the browser list answers; only a failed list sends it elsewhere.
+  const waitForChrome = tab === 'chrome' && chromeOffered === undefined;
 
   const groups = useMemo(() => {
     const allowed: RailGroup[] = [];
@@ -212,17 +215,17 @@ export function SettingsPanelBody({ projectId }: { projectId?: string }) {
   const tabVisible = allItems.some((item) => isRailItemActive(item, tab));
 
   useEffect(() => {
-    if (open && !tabVisible) {
+    if (open && !tabVisible && !waitForChrome) {
       setTab(DEFAULT_SETTINGS_TAB);
     }
-  }, [open, tabVisible, setTab]);
+  }, [open, tabVisible, waitForChrome, setTab]);
 
   const activeAllowed = isTabAllowed(tab);
   useEffect(() => {
-    if (!open || activeAllowed) return;
+    if (!open || activeAllowed || waitForChrome) return;
     const fallback = allItems[0]?.tab ?? DEFAULT_SETTINGS_TAB;
     if (fallback !== tab) setTab(fallback);
-  }, [open, activeAllowed, allItems, tab, setTab]);
+  }, [open, activeAllowed, waitForChrome, allItems, tab, setTab]);
 
   return (
     <SettingsNavProvider value={settingsNav}>
