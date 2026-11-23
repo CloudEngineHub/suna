@@ -12,7 +12,7 @@
  *
  * Real: the session rows, the turn record, `settleTurnEnd`, the settled check and
  * the parent's `continue_session` row with its idempotency key. Stubbed: the
- * stored transcript, the forwarded reconcile, the push notifier and the drain
+ * child's last answer (the stored session log), the forwarded reconcile, the push notifier and the drain
  * kick. `mock.module` is process-global: the db-suites lane runs each file alone.
  */
 import { beforeAll, beforeEach, describe, expect, mock, test } from 'bun:test';
@@ -24,17 +24,10 @@ mock.module('../projects/session-lifecycle/forwarded-strand-reconcile', () => ({
 }));
 const realPush = await import('../notifications/session-push');
 mock.module('../notifications/session-push', () => ({ ...realPush, notifySessionEvent: async () => undefined }));
-const realTranscript = await import('../projects/lib/session-transcript');
-const msg = (role: string, text: string) => ({ id: null, parent_id: null, role, created: null, completed: null, text, tools: [], files: [], reasoning_omitted: false, error: null });
-mock.module('../projects/lib/session-transcript', () => ({
-  ...realTranscript,
-  buildSessionTranscriptDigest: async () => ({
-    available: true,
-    reason: null,
-    source: 'live',
-    complete: true,
-    messages: [msg('user', 'compare three apps'), msg('assistant', 'Saved the comparison.')],
-  }),
+const realLastAnswer = await import('../projects/lib/session-last-answer');
+mock.module('../projects/lib/session-last-answer', () => ({
+  ...realLastAnswer,
+  readLastTurnAnswer: async () => ({ id: 'msg_answer', text: 'Saved the comparison.', error: null }),
 }));
 const realLifecycleDrain = await import('../projects/session-lifecycle/drain');
 mock.module('../projects/session-lifecycle/drain', () => ({ ...realLifecycleDrain, drainSessionLifecycleQueue: async () => undefined }));
