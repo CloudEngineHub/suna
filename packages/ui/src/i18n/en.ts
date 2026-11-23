@@ -1630,6 +1630,10 @@ const catalog = {
     "panel": {
       "outputNew": "New",
       "outputUpdated": "Updated",
+      "backgroundTasks": "Background tasks",
+      "finished": "Finished",
+      "finishedCount": "{count} finished",
+      "running": "Running",
       "resizePane": "Resize pane"
     }
   },

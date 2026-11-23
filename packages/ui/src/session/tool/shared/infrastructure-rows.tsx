@@ -6,7 +6,7 @@ import { CaretRightIcon } from '@phosphor-icons/react';
 import { cn } from '../../../lib/utils';
 import { createContext, useCallback, useContext, useState } from 'react';
 import { ToolSurfaceContext } from './surface';
-import { BoundActivateContext, ToolDurationContext, ToolOpenContext, ToolOutcomeContext, ToolPanelFlatContext, ToolRunningContext } from './infrastructure-contexts';
+import { BoundActivateContext, ToolDurationContext, ToolOpenContext, ToolOutcomeContext, ToolRunningContext } from './infrastructure-contexts';
 import { PanelRowTitle, TOOL_ROW_CLASS, ToolHeaderRow, ToolOutcomeIcon } from './infrastructure-row-header';
 import { isTriggerTitle } from './infrastructure-parts';
 import { type BasicToolProps } from './types';
@@ -23,14 +23,11 @@ import { type TriggerTitle } from '../../../internal/session-types';
  * A row inverts it: the detail opens as a list of one-line summaries, and the
  * reader expands the one they came for.
  *
- * The row is the `bg-popover rounded-md border` surface the design system uses
- * for every panel row, and its disclosure affordance is the same MARK the Easy
- * cards use — a `CaretRightIcon` that points down once the thing is open. Only
- * the mark is shared: `PanelCard` sits on `bg-pane` at a tighter radius and
- * animates its chevron through `motion` with a press scale, while this row is a
- * denser, plainer thing that rotates its chevron in CSS. Same vocabulary, not
- * the same component. No rail, no connector, no per-row header: the gap between
- * rows is the whole rhythm.
+ * Each call is its own card (`bg-popover rounded-md border`), and the list
+ * spaces the cards apart (`ToolParts`, `gap-2`). The caret points down once a
+ * card is open, and the body opens under one hairline inside the card. The
+ * verb ("Ran command") is meta ink; the value it acted on (the command, the
+ * path, the query) is the bright text.
  *
  * Interaction is gated on having a body — a childless call has nothing to
  * disclose, so it gets no chevron, no `role="button"`, and no cursor change
@@ -66,7 +63,6 @@ function PanelToolRow({
   action?: React.ReactNode;
 }) {
   const hasBody = Boolean(children);
-  const flat = useContext(ToolPanelFlatContext);
   // Same substitution the inline header makes, from the same context — a failed
   // call leads with the verdict on both surfaces or the two disagree about what
   // happened. See {@link ToolOutcomeIcon}.
@@ -75,13 +71,16 @@ function PanelToolRow({
   const row = (
     <div
       className={cn(
-        flat ? 'flex min-h-11 w-full items-center gap-2.5 rounded-md px-2 py-2.5 text-left' : 'flex min-h-11 w-full items-center gap-2.5 px-3 py-2.5 text-left',
-        hasBody && 'transition-colors',
-        hasBody && !locked && 'hover:bg-muted-foreground/[0.04] cursor-pointer',
+        // `items-start` + one-line slots (`h-[1lh]`): every glyph sits on the
+        // first line, so a two-line row (an agent and its task) keeps its
+        // icon, state and caret beside the name, not between the lines.
+        'flex min-h-10 w-full items-start gap-2.5 px-3 py-2.5 text-left text-sm',
+        hasBody && 'transition-colors duration-(--duration-fast)',
+        hasBody && !locked && 'hover:bg-hover cursor-pointer',
       )}
     >
       {leading && (
-        <span className="text-muted-foreground flex size-4 shrink-0 items-center justify-center [&>svg]:size-4">
+        <span className="text-muted-foreground flex h-[1lh] w-4 shrink-0 items-center justify-center [&>svg]:size-4">
           {leading}
         </span>
       )}
@@ -97,25 +96,27 @@ function PanelToolRow({
         </div>
       )}
       {badge && (
-        <span className="text-muted-foreground shrink-0 font-mono text-xs whitespace-nowrap tabular-nums">
+        <span className="text-muted-foreground flex h-[1lh] shrink-0 items-center font-mono text-xs whitespace-nowrap tabular-nums">
           {badge}
         </span>
       )}
       {/* After the badge, before the chevron: the badge counts what the row
           holds, the chevron opens it, and the action leaves for somewhere else
           — so the two that concern THIS row stay adjacent to it. */}
-      {action && <span className="flex shrink-0 items-center">{action}</span>}
+      {action && <span className="flex h-[1lh] shrink-0 items-center">{action}</span>}
       {hasBody && (
-        <CaretRightIcon
-          aria-hidden
-          // CSS, not `motion` — the rotation is a 150ms state change on one
-          // property, and every row on the pane would otherwise carry a
-          // motion component. `motion-reduce` snaps it instead.
-          className={cn(
-            'text-muted-foreground size-4 shrink-0 transition-transform motion-reduce:transition-none',
-            open && 'rotate-90',
-          )}
-        />
+        <span className="flex h-[1lh] shrink-0 items-center">
+          <CaretRightIcon
+            aria-hidden
+            // CSS, not `motion` — the rotation is a 150ms state change on one
+            // property, and every row on the pane would otherwise carry a
+            // motion component. `motion-reduce` snaps it instead.
+            className={cn(
+              'text-muted-foreground size-4 shrink-0 transition-transform motion-reduce:transition-none',
+              open && 'rotate-90',
+            )}
+          />
+        </span>
       )}
     </div>
   );
@@ -124,8 +125,7 @@ function PanelToolRow({
     <Disclosure
       open={open}
       onOpenChange={onOpenChange}
-      data-panel-flat={flat || undefined}
-      className={flat ? 'border-border border-b last:border-b-0' : 'bg-popover border-border overflow-hidden rounded-md border'}
+      className="bg-popover border-border overflow-hidden rounded-md border"
     >
       {hasBody ? <DisclosureTrigger>{row}</DisclosureTrigger> : row}
       {/* Animated for the same reason the inline row is — see
@@ -134,7 +134,7 @@ function PanelToolRow({
           border on a `height: 0` box draws a hairline across a closed row. */}
       {hasBody && (
         <DisclosureContent>
-          <div className={cn(flat ? 'px-2 pb-3 text-sm' : 'border-border border-t px-3 py-3 text-sm', className)}>
+          <div className={cn('border-border border-t px-3 py-3 text-sm', className)}>
             {children}
           </div>
         </DisclosureContent>

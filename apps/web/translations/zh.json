@@ -2260,6 +2260,10 @@
     "panel": {
       "outputNew": "新",
       "outputUpdated": "已更新",
+      "backgroundTasks": "后台任务",
+      "finished": "已完成",
+      "finishedCount": "已完成 {count} 个",
+      "running": "进行中",
       "resizePane": "调整窗格大小"
     }
   },

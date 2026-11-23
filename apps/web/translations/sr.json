@@ -2260,6 +2260,10 @@
     "panel": {
       "outputNew": "Ново",
       "outputUpdated": "Ажурирано",
+      "backgroundTasks": "Позадински задаци",
+      "finished": "Завршено",
+      "finishedCount": "{count} завршено",
+      "running": "У току",
       "resizePane": "Промени величину окна"
     }
   },

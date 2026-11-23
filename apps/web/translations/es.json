@@ -2260,6 +2260,10 @@
     "panel": {
       "outputNew": "Nuevo",
       "outputUpdated": "Actualizado",
+      "backgroundTasks": "Tareas en segundo plano",
+      "finished": "Terminadas",
+      "finishedCount": "{count} terminadas",
+      "running": "En curso",
       "resizePane": "Cambiar el tamaño del panel"
     }
   },

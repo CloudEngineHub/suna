@@ -13,13 +13,13 @@ import {
   partRawOutput,
   partStatus,
   ToolOutcomeContext,
-  ToolPanelFlatContext,
   ToolRunningContext,
   ToolSurfaceContext,
   useToolIndent,
   useToolOpen,
 } from '../shared/infrastructure';
 import { ToolRegistry } from '../shared/registry';
+import { SolidCheckIcon } from '../../../internal/icons/solid-check-icon';
 import { ToolResultCard } from '../shared/result-card';
 import type { ToolProps } from '../shared/types';
 import { useTranslations } from '../../../i18n';
@@ -32,7 +32,6 @@ import {
   CaretRightIcon,
   ChartBarIcon,
   ChatsCircleIcon,
-  CheckIcon,
   GitPullRequestIcon,
   SunDimIcon,
   HandPointingIcon,
@@ -115,7 +114,8 @@ function StatusMark({ status }: { status: KortixCardStatus }) {
   const t = useTranslations('tools.kortixAction.status');
   const glyph =
     status === 'done' ? (
-      <CheckIcon aria-hidden className="text-kortix-green size-3.5 shrink-0" />
+      // Done is a resting state: meta ink, never green (green means running).
+      <SolidCheckIcon aria-hidden className="text-muted-foreground size-3.5 shrink-0" />
     ) : status === 'running' ? (
       // The thing the tool started runs on (a session). No spinner: the call itself is over.
       <StatusDot tone="success" />
@@ -331,19 +331,8 @@ function SettledTrigger({
   );
 }
 
-/**
- * Kortix platform calls (agents, sessions, access, connectors) read as one flat
- * list in the side panel, the same timeline the agent rows draw: no card per call.
- */
+/** Kortix platform calls (agents, sessions, access, connectors). In the side panel they are the same flat rows as every other call. */
 export function KortixActionTool(props: ToolProps) {
-  return (
-    <ToolPanelFlatContext.Provider value>
-      <KortixActionToolBody {...props} />
-    </ToolPanelFlatContext.Provider>
-  );
-}
-
-function KortixActionToolBody(props: ToolProps) {
   const { call, defaultOpen, forceOpen, locked } = props;
   const t = useTranslations('tools.kortixAction');
   const tMulti = useTranslations('multiAgent.tools');

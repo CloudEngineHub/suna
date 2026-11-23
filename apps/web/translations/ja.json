@@ -2260,6 +2260,10 @@
     "panel": {
       "outputNew": "新規",
       "outputUpdated": "更新済み",
+      "backgroundTasks": "バックグラウンドタスク",
+      "finished": "完了",
+      "finishedCount": "{count} 件完了",
+      "running": "実行中",
       "resizePane": "ペインのサイズを変更"
     }
   },

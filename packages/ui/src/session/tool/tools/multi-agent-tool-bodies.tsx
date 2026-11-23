@@ -13,7 +13,7 @@ import { agentDisplayName } from '../../../internal/components/agent-mark';
 import { peerHandleLabel } from '@kortix/shared';
 import { AgentChip, AgentFace, AgentHandle, AgentRowBody, AgentRowScope, AgentStatus, AgentTrigger, SmallGlyph, taskGlyphStatus } from '../../agents/agent-surface';
 import type { SessionDisplayStatus } from '../../actions/session-label';
-import { BasicTool } from '../shared/infrastructure';
+import { BasicTool, ToolSurfaceContext } from '../shared/infrastructure';
 import {
   ArrowSquareOutIcon,
   ArrowUpRightIcon,
@@ -24,6 +24,8 @@ import {
   type Icon,
 } from '@phosphor-icons/react';
 import { useContext, useState, type ReactNode } from 'react';
+import { SolidCheckIcon } from '../../../internal/icons/solid-check-icon';
+import { ToolStartedAtContext } from '../shared/infrastructure-contexts';
 import type { KortixToolResult, MultiAgentTool } from './kortix-tool-card';
 import { useSessionChildren } from '@kortix/sdk/react';
 import { useSessionIds } from '../../../providers/session-ids';
@@ -155,6 +157,10 @@ export function PeerSendRow({
   const working = useColleagueWorking(delivered && !settled ? { handle: send.to, sessionId: receiverId ?? null } : null);
   const preview = send.summary || firstLineOf(send.message) || undefined;
   const hasBody = !!send.message || (!delivered && !!send.note);
+  // The side panel has the room for what happened to the message, in order.
+  if (useContext(ToolSurfaceContext) === 'panel') {
+    return <PeerSendTimeline send={send} working={working} />;
+  }
   return (
     <AgentRowScope>
       <BasicTool
@@ -184,6 +190,79 @@ export function PeerSendRow({
         ) : undefined}
       </BasicTool>
     </AgentRowScope>
+  );
+}
+
+/**
+ * A sent message in the side panel, as a timeline (one rail, one node per
+ * event, the time on the right): who it went to and what it said, then what
+ * became of it — the receiver working on it, or the delivery state and the
+ * platform's note when it did not get through.
+ */
+function PeerSendTimeline({ send, working }: { send: PeerSendSummary; working: boolean }) {
+  const t = useTranslations('multiAgent.tools');
+  const startedAt = useContext(ToolStartedAtContext);
+  const clock = startedAt ? new Date(startedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : null;
+  const delivered = send.status === 'delivered';
+  const { lead, trail } = aroundName(t('messageToName', { to: TO_MARK }));
+  const name = send.to ? peerHandleLabel(send.to).replace(/^@/, '') : null;
+  const title = send.summary || null;
+  const text = send.message && send.message !== title ? send.message : null;
+
+  return (
+    <ol className="flex flex-col py-1">
+      <TimelineNode glyph={<PaperPlaneTiltIcon className="size-3.5" />} rail>
+        <div className="flex min-h-5 min-w-0 items-center gap-1.5 text-sm">
+          {name ? (
+            <>
+              {lead && <span className="text-muted-foreground shrink-0">{lead.trim()}</span>}
+              <AgentChip handle={send.to!} name={name} plain className="max-w-none min-w-0 shrink" />
+              {trail && <span className="text-muted-foreground shrink-0">{trail.trim()}</span>}
+            </>
+          ) : (
+            <span className="text-muted-foreground">{t('messageSent')}</span>
+          )}
+          {clock && <span className="text-muted-foreground ml-auto shrink-0 pl-2 text-xs tabular-nums">{clock}</span>}
+        </div>
+        {(title || text) && (
+          <div className="bg-popover border-border mt-2 rounded-md border px-3 py-2.5 text-sm">
+            {title && <p className="text-foreground font-medium">{title}</p>}
+            {text && (
+              <p className={cn('whitespace-pre-wrap wrap-break-word', title ? 'text-muted-foreground mt-1' : 'text-foreground')}>{text}</p>
+            )}
+          </div>
+        )}
+      </TimelineNode>
+      <TimelineNode
+        glyph={
+          working ? (
+            <SmallGlyph status="running" />
+          ) : delivered ? (
+            <SolidCheckIcon className="size-3.5" />
+          ) : (
+            <SmallGlyph status={PEER_GLYPH[send.status]} />
+          )
+        }
+      >
+        <div className="flex min-h-5 items-center text-sm">
+          <span className="text-muted-foreground">{working ? t('state.working') : t(`peerStatus.${send.status}`)}</span>
+        </div>
+        {!delivered && send.note && <p className="text-muted-foreground mt-0.5 text-sm">{send.note}</p>}
+      </TimelineNode>
+    </ol>
+  );
+}
+
+/** One event on the rail: a 20px glyph node, the rail running down to the next node, the content beside it. */
+function TimelineNode({ glyph, rail = false, children }: { glyph: ReactNode; rail?: boolean; children: ReactNode }) {
+  return (
+    <li className={cn('relative flex gap-3', rail && 'pb-4')}>
+      {rail && <span aria-hidden className="bg-border absolute top-6 bottom-1 left-2.5 w-px" />}
+      <span aria-hidden className="text-muted-foreground flex size-5 shrink-0 items-center justify-center">
+        {glyph}
+      </span>
+      <div className="min-w-0 flex-1">{children}</div>
+    </li>
   );
 }
 
@@ -240,17 +319,17 @@ function AgentLine({ agent }: { agent: ReachableAgentRow }) {
   const name = `@${agent.handle}`;
   const label = peerHandleLabel(agent.handle).replace(/^@/, '');
   const failed = agent.state === 'failed';
-  // The composer's agents popover row: the agent's chip and its state on one
-  // line, what it works on below. The chip carries the face, so no state glyph.
+  // The agent's mark and name, its state on the right edge, and what it works
+  // on below, on the name's edge. No tinted pill: the mark is the agent's face.
   return (
     <li className="group/row hover:bg-hover focus-within:bg-hover flex min-w-0 items-start rounded-md" data-agent-row={agent.sessionId}>
       <button
         type="button"
         onClick={() => setViewing(true)}
-        className="flex min-w-0 flex-1 cursor-pointer flex-col gap-1 py-2 pl-2 text-left outline-none"
+        className="flex min-w-0 flex-1 cursor-pointer flex-col gap-0.5 py-2 pl-1 text-left outline-none"
       >
         <span className="flex min-w-0 items-center gap-2">
-          <AgentChip handle={agent.handle} name={label} className="max-w-none min-w-0 shrink" />
+          <AgentChip handle={agent.handle} name={label} plain className="max-w-none min-w-0 shrink" />
           <span className="flex-1" />
           {agent.state && (
             <span className={cn('shrink-0 text-xs', failed ? 'text-kortix-red' : 'text-muted-foreground')}>
@@ -259,7 +338,7 @@ function AgentLine({ agent }: { agent: ReachableAgentRow }) {
           )}
         </span>
         {meta && (
-          <span className="text-muted-foreground block truncate pl-0.5 text-xs" title={meta}>
+          <span className="text-muted-foreground block truncate pl-5 text-xs" title={meta}>
             {meta}
           </span>
         )}
@@ -367,14 +446,13 @@ export function multiAgentBody(tool: MultiAgentTool, result: KortixToolResult): 
     case 'list_agents': {
       const agents = parseReachable(result.data);
       if (!agents || agents.length === 0) return null;
+      // One list under the row, no card around it: each agent is a row of its own.
       return (
-        <ToolResultCard bodyClassName="p-1">
-          <ul>
-            {agents.map((agent) => (
-              <AgentLine key={agent.sessionId} agent={agent} />
-            ))}
-          </ul>
-        </ToolResultCard>
+        <ul className="-mx-1 flex flex-col">
+          {agents.map((agent) => (
+            <AgentLine key={agent.sessionId} agent={agent} />
+          ))}
+        </ul>
       );
     }
     case 'task_create':
