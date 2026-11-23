@@ -1834,7 +1834,7 @@ const catalog = {
     "unified": {
       "welcome": "Welcome to {name}",
       "email": "Email",
-      "emailPlaceholder": "Your email address",
+      "emailPlaceholder": "Enter your email address…",
       "password": "Password",
       "showPassword": "Show password",
       "hidePassword": "Hide password",
@@ -1900,7 +1900,7 @@ const catalog = {
         "title": "Reset your password",
         "description": "We'll email you a reset link.",
         "email": "Email",
-        "emailPlaceholder": "Your email address",
+        "emailPlaceholder": "Enter your email address…",
         "sending": "Sending link…",
         "submit": "Send reset link"
       },
@@ -1940,6 +1940,13 @@ const catalog = {
       "errorTitle": "Couldn't sign in",
       "errorBody": "Sign in to Kortix in a browser tab, then reopen this panel.",
       "signIn": "Sign in"
+    },
+    "story": {
+      "label": "About Kortix CompanyOS",
+      "outcome": "Hand it an outcome. AI agents run it 24/7.",
+      "repo": "Your agents, skills, and memory in one repo you own.",
+      "approve": "Agents do the work. You approve what ships.",
+      "worksWith": "Works with the tools your team already uses"
     }
   },
   "tools": {

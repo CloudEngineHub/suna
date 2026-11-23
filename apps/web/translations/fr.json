@@ -3095,7 +3095,7 @@
     "unified": {
       "welcome": "Bienvenue sur {name}",
       "email": "E-mail",
-      "emailPlaceholder": "Votre adresse e-mail",
+      "emailPlaceholder": "Saisissez votre adresse e-mail…",
       "password": "Mot de passe",
       "showPassword": "Afficher le mot de passe",
       "hidePassword": "Masquer le mot de passe",
@@ -3161,7 +3161,7 @@
         "title": "Réinitialiser votre mot de passe",
         "description": "Nous vous enverrons un lien de réinitialisation.",
         "email": "E-mail",
-        "emailPlaceholder": "Votre adresse e-mail",
+        "emailPlaceholder": "Saisissez votre adresse e-mail…",
         "sending": "Envoi du lien…",
         "submit": "Envoyer le lien de réinitialisation"
       },
@@ -3201,6 +3201,13 @@
       "errorTitle": "Connexion impossible",
       "errorBody": "Connectez-vous à Kortix dans un onglet du navigateur, puis rouvrez ce panneau.",
       "signIn": "Se connecter"
+    },
+    "story": {
+      "label": "À propos de Kortix CompanyOS",
+      "outcome": "Fixez un objectif. Des agents IA s’en chargent 24 h/24.",
+      "repo": "Vos agents, skills et votre mémoire dans un dépôt qui vous appartient.",
+      "approve": "Les agents font le travail. Vous validez ce qui est publié.",
+      "worksWith": "Compatible avec les outils que votre équipe utilise déjà"
     }
   },
   "onboarding": {

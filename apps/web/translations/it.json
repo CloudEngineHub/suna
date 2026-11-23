@@ -3095,7 +3095,7 @@
     "unified": {
       "welcome": "Benvenuto su {name}",
       "email": "Email",
-      "emailPlaceholder": "Il tuo indirizzo email",
+      "emailPlaceholder": "Inserisci il tuo indirizzo email…",
       "password": "Password",
       "showPassword": "Mostra password",
       "hidePassword": "Nascondi password",
@@ -3161,7 +3161,7 @@
         "title": "Reimposta la password",
         "description": "Ti invieremo un link per reimpostarla.",
         "email": "Email",
-        "emailPlaceholder": "Il tuo indirizzo email",
+        "emailPlaceholder": "Inserisci il tuo indirizzo email…",
         "sending": "Invio del link…",
         "submit": "Invia link di reimpostazione"
       },
@@ -3201,6 +3201,13 @@
       "errorTitle": "Accesso non riuscito",
       "errorBody": "Accedi a Kortix in una scheda del browser, poi riapri questo pannello.",
       "signIn": "Accedi"
+    },
+    "story": {
+      "label": "Informazioni su Kortix CompanyOS",
+      "outcome": "Indica un risultato. Gli agenti IA ci lavorano 24/7.",
+      "repo": "I tuoi agenti, skill e memoria in un repository tutto tuo.",
+      "approve": "Gli agenti fanno il lavoro. Tu approvi cosa va online.",
+      "worksWith": "Funziona con gli strumenti che il tuo team usa già"
     }
   },
   "onboarding": {

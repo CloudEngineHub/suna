@@ -3095,7 +3095,7 @@
     "unified": {
       "welcome": "Willkommen bei {name}",
       "email": "E-Mail",
-      "emailPlaceholder": "Deine E-Mail-Adresse",
+      "emailPlaceholder": "E-Mail-Adresse eingeben…",
       "password": "Passwort",
       "showPassword": "Passwort anzeigen",
       "hidePassword": "Passwort ausblenden",
@@ -3161,7 +3161,7 @@
         "title": "Passwort zurücksetzen",
         "description": "Wir senden dir einen Link zum Zurücksetzen.",
         "email": "E-Mail",
-        "emailPlaceholder": "Ihre E-Mail-Adresse",
+        "emailPlaceholder": "E-Mail-Adresse eingeben…",
         "sending": "Link wird gesendet …",
         "submit": "Link zum Zurücksetzen senden"
       },
@@ -3201,6 +3201,13 @@
       "errorTitle": "Anmeldung nicht möglich",
       "errorBody": "Melde dich in einem Browser-Tab bei Kortix an und öffne dieses Panel dann erneut.",
       "signIn": "Anmelden"
+    },
+    "story": {
+      "label": "Über Kortix CompanyOS",
+      "outcome": "Gib ein Ergebnis vor. KI-Agenten arbeiten rund um die Uhr daran.",
+      "repo": "Deine Agenten, Skills und dein Wissen in einem Repo, das dir gehört.",
+      "approve": "Agenten erledigen die Arbeit. Du gibst frei, was live geht.",
+      "worksWith": "Funktioniert mit den Tools, die dein Team schon nutzt"
     }
   },
   "onboarding": {
