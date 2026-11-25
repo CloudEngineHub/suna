@@ -27602,5 +27602,14 @@
   "appsList": {
     "search": "Buscar apps",
     "noMatch": "Nenhum app corresponde"
+  },
+  "helpMenu": {
+    "trigger": "Ajuda",
+    "shortcuts": "Atalhos de teclado",
+    "status": "Status",
+    "downloadApps": "Baixar apps",
+    "community": "Comunidade no Discord",
+    "whatsNew": "Novidades",
+    "fullChangelog": "Changelog completo"
   }
 }

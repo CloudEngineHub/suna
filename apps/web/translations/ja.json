@@ -27602,5 +27602,14 @@
   "appsList": {
     "search": "アプリを検索",
     "noMatch": "一致するアプリはありません"
+  },
+  "helpMenu": {
+    "trigger": "ヘルプ",
+    "shortcuts": "キーボードショートカット",
+    "status": "ステータス",
+    "downloadApps": "アプリをダウンロード",
+    "community": "Discord コミュニティ",
+    "whatsNew": "新機能",
+    "fullChangelog": "すべての変更履歴"
   }
 }
