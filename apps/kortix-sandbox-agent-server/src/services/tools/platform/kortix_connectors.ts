@@ -26,6 +26,8 @@ interface CatalogRow {
   id?: string
   name?: string | null
   description?: string | null
+  /** What a sign-in lets agents do, in plain words; only for apps whose scopes Kortix knows. */
+  access?: string | null
   installed_as?: string | null
   /** The slugs this app is installed as; `[]` when it is not. */
   installed?: string[] | string | null
@@ -77,7 +79,7 @@ async function find(query: string, context: PlatformToolContext) {
         const installed = app.installed_as || (Array.isArray(app.installed) ? app.installed.length > 0 : app.installed)
         return {
           title: app.name || app.id || 'app',
-          ...(app.description ? { detail: app.description } : {}),
+          ...(app.description || app.access ? { detail: [app.description, app.access ? `Signing in lets agents: ${app.access}` : null].filter(Boolean).join(' ') } : {}),
           ...(installed ? { badge: 'added' } : {}),
         }
       }),
@@ -92,7 +94,7 @@ async function add(app: string, context: PlatformToolContext) {
   // Exit 3 with the install's JSON: the app is already installed. That is the person's goal, not a failure.
   if (run.code === 3 && value?.existing) {
     const slug = typeof value.slug === 'string' ? value.slug : app
-    return ok(TOOL, 'add', { title: `${slug} is already added`, links: [{ label: 'Connectors', href: adminHref(context.env, 'connectors') }] }, value)
+    return ok(TOOL, 'add', { title: `${slug} is already added`, subtitle: nextStep(value), links: [{ label: 'Connectors', href: adminHref(context.env, 'connectors') }] }, value)
   }
   if (run.code !== 0 || !value) return fail(TOOL, 'add', `Could not add ${app}`, run.code !== 0 ? cliError(run) : { kind: 'failed', message: 'The command answered with no JSON.' }, context)
   const made = { value }
@@ -100,9 +102,17 @@ async function add(app: string, context: PlatformToolContext) {
   return ok(
     TOOL,
     'add',
-    { title: `Added ${slug}`, subtitle: 'Next: sign in, so agents can use it.', links: [{ label: 'Connectors', href: adminHref(context.env, 'connectors') }] },
+    { title: `Added ${slug}`, subtitle: nextStep(made.value), links: [{ label: 'Connectors', href: adminHref(context.env, 'connectors') }] },
     made.value,
   )
+}
+
+/** What the install says comes next (`next` of `kortix connectors catalog install --json`). */
+function nextStep(installed: Record<string, unknown>): string {
+  if (installed.next === 'ready') return 'Ready: it needs no sign-in.'
+  if (installed.next === 'credential') return 'Next: it needs a key. Ask for it with a secret link, never in chat.'
+  if (installed.next === 'fix') return `It does not work yet${typeof installed.error === 'string' ? `: ${installed.error}` : ''}.`
+  return 'Next: sign in, so agents can use it.'
 }
 
 /**
@@ -144,7 +154,7 @@ async function connect(slug: string, shared: boolean, forTrigger: boolean, conte
 export default {
   description:
     'Outside apps agents may use (Gmail, Google Drive, Notion, Slack, a CRM…). Actions: `list` (what is added and signed in); ' +
-    '`find` (query: search every app Kortix can connect); `add` (app: an id from find); ' +
+    '`find` (query: search every app Kortix can connect; an app\'s `access` says what its sign-in lets agents do: name it, word for word, before the person says yes, and for an app with no `access` say its sign-in page lists what it asks for, never guess); `add` (app: an id from find); ' +
     '`connect` (slug: get the sign-in link for the person; shared=true makes the sign-in the whole workspace\'s; ' +
     'for_trigger=true when the sign-in is for a trigger, wake-up or other automation: those run only on the shared sign-in, so it mints that one). ' +
     'Mint ONE link per app and end the turn: never a private link first and a shared one after it. ' +

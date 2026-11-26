@@ -231,13 +231,20 @@ describe('kortix_schedules', () => {
   test('create without an agent is a reminder to this session; with one, each run starts its session', async () => {
     // Each schedule value is one --flag=value word, so it can never read as an option (CWE-88).
     fakeKortix(`'triggers add Check the report --runtime --in=2h') echo 'trigger.abc123' ;;
-  'triggers add Send the summary --runtime --cron=0 9 * * 1 --timezone=Europe/Berlin --agent=researcher') echo 'Created trigger.def456' ;;`)
+  'triggers add Send the summary --runtime --cron=0 9 * * 1 --timezone=Europe/Berlin --agent=researcher') echo 'Created trigger.def456' ;;
+  'triggers pause trigger.def456') echo 'Paused trigger.def456 (paused)' ;;`)
     const reminder = await run('kortix_schedules', { action: 'create', prompt: 'Check the report', in: '2h' })
     expect(reminder.card.title).toBe('Reminder set: in 2h')
     expect(reminder.data).toMatchObject({ id: 'trigger.abc123', agent: null })
     const weekly = await run('kortix_schedules', { action: 'create', prompt: 'Send the summary', cron: '0 9 * * 1', timezone: 'Europe/Berlin', agent: 'researcher' })
-    expect(weekly.data).toMatchObject({ id: 'trigger.def456', agent: 'researcher' })
-    expect(argvs()).toHaveLength(2)
+    // An agent's schedule is saved paused until it is tested; a reminder to this session stays live.
+    expect(weekly.data).toMatchObject({ id: 'trigger.def456', agent: 'researcher', state: 'paused' })
+    expect(weekly.card.rows).toEqual([{ title: 'Not running yet', detail: 'Test it with run_now, then resume it to put it live' }])
+    expect(argvs()).toEqual([
+      'triggers add Check the report --runtime --in=2h',
+      'triggers add Send the summary --runtime --cron=0 9 * * 1 --timezone=Europe/Berlin --agent=researcher',
+      'triggers pause trigger.def456',
+    ])
   })
 
   test('an option-shaped id never reaches the CLI, so pause cannot fall through to the project-wide switch (CWE-88)', async () => {
@@ -1061,4 +1068,37 @@ test('kortix_agents create: a one-item ["all"] or ["none"] grant is written as t
   'agents config helper --file '*' --json') cp "$5" ${JSON.stringify(join('$BIN', 'block.json'))}; echo '{"ok":true,"agent":"helper","block":{}}' ;;`.replaceAll('$BIN', bin))
   await run('kortix_agents', { action: 'create', name: 'helper', description: 'Helps', instructions: 'Help.', skills: ['all'], secrets: ['none'], connectors: ['gmail'] })
   expect(JSON.parse(readFileSync(join(bin, 'block.json'), 'utf8'))).toMatchObject({ skills: 'all', secrets: 'none', connectors: ['gmail'] })
+})
+
+describe('kortix_people invite', () => {
+  test('an invitation that sent its email reads as sent', async () => {
+    fakeKortix(`'access invite sam@example.com --role member --json') echo '{"status":"invited","email_sent":true}' ;;`)
+    const result = await run('kortix_people', { action: 'invite', email: 'sam@example.com', role: 'member' })
+    expect(result.card.title).toBe('Invited sam@example.com')
+  })
+
+  // The audit: with no email provider the API answers email_sent false and an invite_url; the card said "Invited" and the link was lost.
+  test('an invitation with no email sent says so and carries the link the person shares', async () => {
+    fakeKortix(`'access invite sam@example.com --role member --json') echo '{"status":"invited","email_sent":false,"email_skip_reason":"no email provider","invite_url":"https://app.example.com/invite/tok_1"}' ;;`)
+    const result = await run('kortix_people', { action: 'invite', email: 'sam@example.com', role: 'member' })
+    expect(result.card.title).toBe('Invited sam@example.com, but no email was sent')
+    expect(result.card.status).toBe('needs_you')
+    expect(result.card.links?.[0]).toEqual({ label: 'Invitation link', href: 'https://app.example.com/invite/tok_1' })
+  })
+})
+
+test('kortix_connectors add: the card names the next step the install returns', async () => {
+  fakeKortix(`'connectors catalog install curated/docs --json') echo '{"slug":"docs","next":"ready"}' ;;
+  'connectors catalog install composio:stripe --json') echo '{"slug":"stripe","next":"credential"}' ;;
+  'connectors catalog install curated/broken --json') echo '{"slug":"broken","next":"fix","error":"its tools could not be loaded"}' ;;`)
+  expect((await run('kortix_connectors', { action: 'add', app: 'curated/docs' })).card.subtitle).toBe('Ready: it needs no sign-in.')
+  expect((await run('kortix_connectors', { action: 'add', app: 'composio:stripe' })).card.subtitle).toContain('it needs a key')
+  expect((await run('kortix_connectors', { action: 'add', app: 'curated/broken' })).card.subtitle).toBe('It does not work yet: its tools could not be loaded.')
+})
+
+test('kortix_connectors find: an app whose access Kortix knows says what its sign-in lets agents do', async () => {
+  fakeKortix(`'connectors catalog gmail --limit 8 --json') echo '{"items":[{"id":"kortix:gmail","name":"Gmail","description":"Read, search, send and organize email.","access":"Read, search, send, label and archive mail.","installed":[]},{"id":"composio:gmail","name":"Gmail (Composio)","description":"Email.","installed":[]}]}' ;;`)
+  const result = await run('kortix_connectors', { action: 'find', query: 'gmail' })
+  expect(result.card.rows?.[0]?.detail).toBe('Read, search, send and organize email. Signing in lets agents: Read, search, send, label and archive mail.')
+  expect(result.card.rows?.[1]?.detail).toBe('Email.')
 })
