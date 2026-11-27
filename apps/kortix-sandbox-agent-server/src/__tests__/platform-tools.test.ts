@@ -523,7 +523,7 @@ describe('kortix_schedules follow-through', () => {
     await run('kortix_schedules', { action: 'resume', id: 'reminder.aaaaaaaaaaaa' })
     await run('kortix_schedules', { action: 'run_now', id: 'reminder.aaaaaaaaaaaa' })
     expect((await run('kortix_schedules', { action: 'pause', id: 'weekly-digest' })).ok).toBe(true)
-    expect((await run('kortix_schedules', { action: 'resume', id: 'weekly-digest' })).ok).toBe(true)
+    expect((await run('kortix_schedules', { action: 'resume', id: 'weekly-digest', force: true })).ok).toBe(true)
     expect(argvs()).toEqual([
       'loops rm reminder.aaaaaaaaaaaa',
       'triggers rm trigger.cccccccccccc',
@@ -901,6 +901,23 @@ describe('kortix_schedules automations', () => {
 })
 
 describe('kortix_schedules automate tolerance', () => {
+  // QualiLoop e2e on dev: an automation with no agent ran My Kortix, and every run failed
+  // ("My Kortix cannot start another My Kortix session").
+  test('an automation names the agent that does the work; with none it is refused before any command', async () => {
+    fakeKortix(``)
+    const result = await run('kortix_schedules', { action: 'automate', name: 'digest', on: 'schedule', cron: '0 9 * * 1-5', prompt: 'Write the digest.' })
+    expect(result.error?.kind).toBe('invalid')
+    expect(result.error?.message).toContain('worker')
+    expect(argvs()).toEqual([''])
+  })
+
+  test('pause, resume, remove and run_now take the name automate used when id is missing', async () => {
+    fakeKortix(`'triggers resume weekday-digest --apply') printf 'Resumed\\n' ;;`)
+    const result = await run('kortix_schedules', { action: 'resume', name: 'weekday-digest', force: true })
+    expect(result.ok).toBe(true)
+    expect(argvs()).toEqual(['triggers resume weekday-digest --apply'])
+  })
+
   test('a missing `on` is read from the fields the call gave: secret_env is a webhook, connector + event a connector event, app an App event, cron or every a schedule', async () => {
     fakeKortix(`'triggers add '*' --apply') printf 'Added (live)\\n' ;;`)
     const calls_ = [
@@ -910,19 +927,19 @@ describe('kortix_schedules automate tolerance', () => {
       { args: { every: '1d' }, type: 'cron' },
     ]
     for (const [i, c] of calls_.entries()) {
-      const result = await run('kortix_schedules', { action: 'automate', name: `a${i}`, prompt: 'Go.', ...c.args })
+      const result = await run('kortix_schedules', { action: 'automate', name: `a${i}`, agent: 'worker', prompt: 'Go.', ...c.args })
       expect({ i, ok: result.ok }).toEqual({ i, ok: true })
       expect(argvs()[i]).toContain(`--type=${c.type}`)
     }
     // Nothing to read it from: still refused, before any command.
-    expect((await run('kortix_schedules', { action: 'automate', name: 'a9', prompt: 'Go.' })).error?.kind).toBe('invalid')
+    expect((await run('kortix_schedules', { action: 'automate', name: 'a9', agent: 'worker', prompt: 'Go.' })).error?.kind).toBe('invalid')
     expect(argvs()).toHaveLength(4)
   })
 
   test('a webhook secret that is missing or stored for agents: the result carries a link where the person saves it for webhooks', async () => {
     fakeKortix(`'triggers add form-leads '*' --apply') echo '{"kortix_error":{"kind":"invalid","status":422,"message":"Webhook secret is not configured for webhooks (webhook_secret_delivery_mismatch)"}}' >&2; exit 1 ;;
   'secrets request FORM_SECRET --scope=connector') printf '\\n  Hand this link to whoever has the value (FORM_SECRET)\\n  https://app.example.test/secret-intake/ksl_abc123\\n' ;;`)
-    const result = await run('kortix_schedules', { action: 'automate', name: 'form-leads', on: 'webhook', secret_env: 'FORM_SECRET', prompt: 'Draft a reply.' })
+    const result = await run('kortix_schedules', { action: 'automate', name: 'form-leads', on: 'webhook', secret_env: 'FORM_SECRET', agent: 'sales', prompt: 'Draft a reply.' })
     expect(result.ok).toBe(false)
     expect(result.card.title).toBe('FORM_SECRET needs saving for webhooks')
     // The person saves it from the card: one link, a plain note, no model instruction.
@@ -955,11 +972,11 @@ describe('kortix_schedules automate: an App as the event source', () => {
   'triggers add status-work '*' --apply') printf 'Added status-work (live)\\n' ;;`)
     const woken = await run('kortix_schedules', { action: 'wake_on', text: TEXT, on: 'app_event', app: 'github-status', expect_event_within: '1h' })
     expect(woken.ok).toBe(true)
-    const work = await run('kortix_schedules', { action: 'automate', name: 'status-work', on: 'app_event', app: 'github-status', prompt: 'Status changed.', expect_event_within: '1h' })
+    const work = await run('kortix_schedules', { action: 'automate', name: 'status-work', on: 'app_event', app: 'github-status', agent: 'worker', prompt: 'Status changed.', expect_event_within: '1h' })
     expect(work.ok).toBe(true)
     expect(argvs()).toEqual([
       `triggers add ${TEXT} --on=app --app=github-status --expect-event-within=1h --json`,
-      'triggers add status-work --type=app --prompt=Status changed. --app=github-status --expect-event-within=1h --apply',
+      'triggers add status-work --type=app --prompt=Status changed. --agent=worker --app=github-status --expect-event-within=1h --apply',
     ])
     for (const bad of [
       { action: 'wake_on', text: TEXT, on: 'cr_merged', cr: '42', expect_event_within: '1h' },
@@ -1118,4 +1135,27 @@ test('kortix_schedules runs: an agent schedule is read by its runtime id, as cre
   const result = await run('kortix_schedules', { action: 'runs', id: 'trigger.d2ef47e4b15e' })
   expect(result.ok).toBe(true)
   expect(result.card.title).toBe('trigger.d2ef47e4b15e: 1 recent runs')
+})
+
+// QualiLoop e2e on dev: automations went live after one matching sample, or after a change with no new test.
+test('kortix_schedules resume: a filtered automation goes live only after a sample that runs and one that is skipped', async () => {
+  fakeKortix(`'triggers show mail-triage --json') echo '{"type":"event","filter":{"event.data.subject":{"prefix":"Invoice"}}}' ;;
+  'triggers fire mail-triage --dry-run --payload={"event":{"data":{"subject":"Invoice 7"}}} --json') echo '{"filter_matches":true,"rendered_prompt":"Go"}' ;;
+  'triggers fire mail-triage --dry-run --payload={"event":{"data":{"subject":"Hello"}}} --json') echo '{"filter_matches":false,"rendered_prompt":"Go"}' ;;
+  'triggers resume mail-triage --apply') echo 'Enabled' ;;`)
+  const refused = await run('kortix_schedules', { action: 'resume', id: 'mail-triage' })
+  expect(refused.card.title).toBe('Test it before it goes live')
+  await run('kortix_schedules', { action: 'test', name: 'mail-triage', payload: { event: { data: { subject: 'Invoice 7' } } } })
+  expect((await run('kortix_schedules', { action: 'resume', id: 'mail-triage' })).error?.message).toContain('should be skipped')
+  await run('kortix_schedules', { action: 'test', name: 'mail-triage', payload: { event: { data: { subject: 'Hello' } } } })
+  expect((await run('kortix_schedules', { action: 'resume', id: 'mail-triage' })).ok).toBe(true)
+  expect(argvs().filter((a) => a.startsWith('triggers resume'))).toEqual(['triggers resume mail-triage --apply'])
+})
+
+test('kortix_schedules resume: an agent schedule from create goes live after run_now', async () => {
+  fakeKortix(`'triggers run trigger.dddddddddddd') echo 'Fired' ;;
+  'triggers resume trigger.dddddddddddd') echo 'Resumed' ;;`)
+  expect((await run('kortix_schedules', { action: 'resume', id: 'trigger.dddddddddddd' })).error?.message).toContain('run_now')
+  await run('kortix_schedules', { action: 'run_now', id: 'trigger.dddddddddddd' })
+  expect((await run('kortix_schedules', { action: 'resume', id: 'trigger.dddddddddddd' })).ok).toBe(true)
 })
